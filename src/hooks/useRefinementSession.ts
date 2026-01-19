@@ -98,6 +98,14 @@ export function useRefinementSession() {
     [currentMember, currentStory]
   );
 
+  const goToStory = useCallback((index: number) => {
+    setSession((prev) => ({
+      ...prev,
+      currentStoryIndex: Math.max(0, Math.min(index, prev.stories.length - 1)),
+      isRevealed: false,
+    }));
+  }, []);
+
   const goToNextStory = useCallback(() => {
     setSession((prev) => ({
       ...prev,
@@ -130,6 +138,7 @@ export function useRefinementSession() {
     currentVote,
     allVoted,
     submitVote,
+    goToStory,
     goToNextStory,
     goToPreviousStory,
     revealVotes,
