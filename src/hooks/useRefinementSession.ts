@@ -48,13 +48,35 @@ const DEMO_MEMBERS: TeamMember[] = [
   { id: "5", name: "Morgan" },
 ];
 
+// Demo votes - all members voted on all stories
+const DEMO_VOTES: Vote[] = [
+  // Story 1 votes - consensus at 5
+  { memberId: "1", storyId: "1", points: 5 },
+  { memberId: "2", storyId: "1", points: 5 },
+  { memberId: "3", storyId: "1", points: 5 },
+  { memberId: "4", storyId: "1", points: 5 },
+  { memberId: "5", storyId: "1", points: 5 },
+  // Story 2 votes - no consensus, avg ~6.4
+  { memberId: "1", storyId: "2", points: 8 },
+  { memberId: "2", storyId: "2", points: 5 },
+  { memberId: "3", storyId: "2", points: 8 },
+  { memberId: "4", storyId: "2", points: 5 },
+  { memberId: "5", storyId: "2", points: 5 },
+  // Story 3 votes - consensus at 3
+  { memberId: "1", storyId: "3", points: 3 },
+  { memberId: "2", storyId: "3", points: 3 },
+  { memberId: "3", storyId: "3", points: 3 },
+  { memberId: "4", storyId: "3", points: 3 },
+  { memberId: "5", storyId: "3", points: 3 },
+];
+
 export function useRefinementSession() {
   const [session, setSession] = useState<RefinementSession>({
     id: "demo-session",
     name: "Sprint 24 Refinement",
     stories: DEMO_STORIES,
     members: DEMO_MEMBERS,
-    votes: [],
+    votes: DEMO_VOTES,
     currentStoryIndex: 0,
     isRevealed: false,
   });
