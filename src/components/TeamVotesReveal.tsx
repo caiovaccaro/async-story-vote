@@ -25,15 +25,26 @@ const getVoteColor = (points: StoryPoint) => {
 
 export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVotesRevealProps) {
   const storyVotes = votes.filter(v => v.storyId === storyId);
+  
+  // Convert votes to numbers, handling both number and string types
+  // Filter out '?' and invalid values
   const numericVotes = storyVotes
-    .map(v => v.points)
-    .filter((p): p is Exclude<StoryPoint, '?'> => typeof p === 'number');
+    .map(v => {
+      const points = v.points;
+      if (points === '?') return null;
+      // Handle both number and string types
+      const num = typeof points === 'number' ? points : Number(points);
+      return isNaN(num) ? null : num;
+    })
+    .filter((p): p is number => p !== null);
   
   const average = numericVotes.length > 0 
     ? Math.round(numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length * 10) / 10
     : null;
 
-  const consensus = numericVotes.length > 0 && new Set(numericVotes).size === 1;
+  // Consensus only if all members voted and all votes are the same
+  const allVoted = storyVotes.length === members.length;
+  const consensus = allVoted && numericVotes.length > 0 && new Set(numericVotes).size === 1;
 
   return (
     <div className="space-y-6">
@@ -43,6 +54,14 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
           {storyVotes.length} of {members.length} voted
         </span>
       </div>
+
+      {/* Show current average above the grid, even if not all voted */}
+      {average !== null && (
+        <div className="story-card rounded-xl p-4 flex items-center justify-center">
+          <span className="text-sm text-muted-foreground mr-2">Current average:</span>
+          <span className="text-2xl font-mono font-bold text-foreground">{average.toFixed(1)}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {members.map((member, index) => {

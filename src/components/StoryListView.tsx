@@ -32,9 +32,18 @@ interface StoryListViewProps {
 
 function calculateVoteStats(storyId: string, votes: Vote[], memberCount: number) {
   const storyVotes = votes.filter((v) => v.storyId === storyId);
+  
+  // Convert votes to numbers, handling both number and string types
+  // Filter out '?' and invalid values
   const numericVotes = storyVotes
-    .map((v) => v.points)
-    .filter((p): p is Exclude<typeof p, '?'> => typeof p === "number") as number[];
+    .map((v) => {
+      const points = v.points;
+      if (points === '?') return null;
+      // Handle both number and string types
+      const num = typeof points === 'number' ? points : Number(points);
+      return isNaN(num) ? null : num;
+    })
+    .filter((p): p is number => p !== null);
 
   const voteCount = storyVotes.length;
   const allVoted = voteCount === memberCount;
@@ -228,13 +237,19 @@ export function StoryListView({
                       )}
                       <div className="text-xs text-muted-foreground">
                         {stats.voteCount}/{members.length} voted
+                        {stats.average !== null && (
+                          <span className="text-muted-foreground ml-2">
+                            • Current average: {stats.average.toFixed(1)}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
-                    {/* Always show average/consensus if there are votes, even if not all voted */}
+                    {/* Always show average if there are votes, even if not all voted */}
+                    {/* Only show consensus if all members have voted */}
                     {stats.average !== null && (
                       <div className="flex items-center gap-2">
-                        {stats.consensus !== null ? (
+                        {stats.consensus !== null && stats.allVoted ? (
                           <Badge
                             className={`${getStatusColor(stats.allVoted, stats.consensus)} border`}
                           >

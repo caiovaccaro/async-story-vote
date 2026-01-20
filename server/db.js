@@ -169,13 +169,15 @@ export async function getMembers(sessionId) {
 
 /**
  * Save or update a vote
+ * Votes are now global per story_id and member_id (not per session)
+ * session_id is optional and used for tracking/organization only
  */
 export async function saveVote(sessionId, storyId, memberId, points, isUnclear = false) {
   const result = await pool.query(
     `INSERT INTO votes (session_id, story_id, member_id, points, is_unclear)
      VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (session_id, story_id, member_id)
-     DO UPDATE SET points = $4, is_unclear = $5, updated_at = CURRENT_TIMESTAMP
+     ON CONFLICT (story_id, member_id)
+     DO UPDATE SET points = $4, is_unclear = $5, session_id = COALESCE($1, votes.session_id), updated_at = CURRENT_TIMESTAMP
      RETURNING *`,
     [sessionId, storyId, memberId, String(points), isUnclear]
   );
@@ -183,36 +185,64 @@ export async function saveVote(sessionId, storyId, memberId, points, isUnclear =
 }
 
 /**
- * Get all votes for a session
+ * Get all votes for specific story IDs
+ * Votes are now global, so we fetch by story_id (not session_id)
  */
-export async function getVotes(sessionId) {
+export async function getVotesForStories(storyIds) {
+  if (!storyIds || storyIds.length === 0) {
+    return [];
+  }
   const result = await pool.query(
     `SELECT story_id, member_id, points, is_unclear
      FROM votes
-     WHERE session_id = $1`,
-    [sessionId]
+     WHERE story_id = ANY($1::text[])`,
+    [storyIds]
   );
-  return result.rows.map(row => ({
-    storyId: row.story_id,
-    memberId: row.member_id,
-    points: row.points === '?' ? '?' : Number(row.points),
-    isUnclear: row.is_unclear || false,
-  }));
+  console.log(`Retrieved ${result.rows.length} votes from database for ${storyIds.length} stories`);
+  return result.rows.map(row => {
+    // Keep points as string to match frontend expectations (can be '?', '1', '2', etc.)
+    const points = row.points === '?' ? '?' : String(row.points);
+    return {
+      storyId: row.story_id,
+      memberId: row.member_id,
+      points: points,
+      isUnclear: row.is_unclear || false,
+    };
+  });
 }
 
 /**
- * Get votes for a specific story
+ * Get all votes for a session (for backward compatibility)
+ * Now fetches votes for all stories that were part of this session
  */
-export async function getStoryVotes(sessionId, storyId) {
+export async function getVotes(sessionId) {
+  // First get all story IDs for this session
+  const storiesResult = await pool.query(
+    `SELECT id FROM stories WHERE session_id = $1`,
+    [sessionId]
+  );
+  const storyIds = storiesResult.rows.map(row => row.id);
+  
+  if (storyIds.length === 0) {
+    return [];
+  }
+  
+  return getVotesForStories(storyIds);
+}
+
+/**
+ * Get votes for a specific story (global, not per session)
+ */
+export async function getStoryVotes(storyId) {
   const result = await pool.query(
     `SELECT member_id, points, is_unclear
      FROM votes
-     WHERE session_id = $1 AND story_id = $2`,
-    [sessionId, storyId]
+     WHERE story_id = $1`,
+    [storyId]
   );
   return result.rows.map(row => ({
     memberId: row.member_id,
-    points: row.points === '?' ? '?' : Number(row.points),
+    points: row.points === '?' ? '?' : String(row.points),
     isUnclear: row.is_unclear || false,
   }));
 }

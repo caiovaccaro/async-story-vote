@@ -30,15 +30,23 @@ export function VotingPanel({
       </div>
       
       <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-        {STORY_POINTS.map((points) => (
-          <VoteCard
-            key={points}
-            value={points}
-            selected={selectedPoints === points}
-            onClick={() => onVote(points)}
-            disabled={isRevealed}
-          />
-        ))}
+        {STORY_POINTS.map((points) => {
+          // Compare values, handling both number and string types
+          const isSelected = selectedPoints !== null && (
+            selectedPoints === points || 
+            String(selectedPoints) === String(points) ||
+            Number(selectedPoints) === Number(points)
+          );
+          return (
+            <VoteCard
+              key={points}
+              value={points}
+              selected={isSelected}
+              onClick={() => onVote(points)}
+              disabled={isRevealed}
+            />
+          );
+        })}
       </div>
 
       <div className="flex justify-center pt-2">

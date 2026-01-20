@@ -301,7 +301,10 @@ app.post('/api/sessions/:sessionId/votes', async (req, res) => {
     const { sessionId } = req.params;
     const { storyId, memberId, points, isUnclear } = req.body;
     
+    console.log('Received vote request:', { sessionId, storyId, memberId, points, isUnclear, body: req.body });
+    
     if (!storyId || !memberId || points === undefined) {
+      console.error('Missing required fields:', { storyId, memberId, points });
       return res.status(400).json({ error: 'storyId, memberId, and points are required' });
     }
 
@@ -313,6 +316,7 @@ app.post('/api/sessions/:sessionId/votes', async (req, res) => {
       
       // Get all members for this session
       const members = await db.getMembers(sessionId);
+      console.log('Available members:', members);
       
       // If memberId looks like a hash (short alphanumeric), try to find by matching pattern
       // or we need to get the member name from the request
@@ -322,7 +326,10 @@ app.post('/api/sessions/:sessionId/votes', async (req, res) => {
         if (dbMember) {
           console.log(`Found member by name: ${memberName} -> ${dbMember.id}`);
           const vote = await db.saveVote(sessionId, storyId, dbMember.id, points, isUnclear || false);
+          console.log('Vote saved successfully:', vote);
           return res.json(vote);
+        } else {
+          console.error(`Member not found by name: ${memberName}`, { availableMembers: members.map(m => m.name) });
         }
       }
       
@@ -333,11 +340,14 @@ app.post('/api/sessions/:sessionId/votes', async (req, res) => {
       });
     }
     
+    console.log('Saving vote with valid UUID:', { sessionId, storyId, memberId, points, isUnclear });
     const vote = await db.saveVote(sessionId, storyId, memberId, points, isUnclear || false);
+    console.log('Vote saved successfully:', vote);
     res.json(vote);
   } catch (error) {
     console.error('Error saving vote:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message, details: error.stack });
   }
 });
 
@@ -345,22 +355,40 @@ app.post('/api/sessions/:sessionId/votes', async (req, res) => {
 app.get('/api/sessions/:sessionId/votes', async (req, res) => {
   try {
     const { sessionId } = req.params;
+    console.log('Fetching votes for session:', sessionId);
     const votes = await db.getVotes(sessionId);
+    console.log(`Retrieved ${votes.length} votes for session ${sessionId}`);
     res.json(votes);
   } catch (error) {
     console.error('Error getting votes:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message, details: error.stack });
+  }
+});
+
+// Get votes for a specific story (global, not per session)
+app.get('/api/stories/:storyId/votes', async (req, res) => {
+  try {
+    const { storyId } = req.params;
+    const votes = await db.getStoryVotes(storyId);
+    res.json(votes);
+  } catch (error) {
+    console.error('Error getting story votes:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get votes for a specific story
-app.get('/api/sessions/:sessionId/stories/:storyId/votes', async (req, res) => {
+// Get votes for multiple stories (for efficiency)
+app.post('/api/votes/bulk', async (req, res) => {
   try {
-    const { sessionId, storyId } = req.params;
-    const votes = await db.getStoryVotes(sessionId, storyId);
+    const { storyIds } = req.body;
+    if (!Array.isArray(storyIds)) {
+      return res.status(400).json({ error: 'storyIds must be an array' });
+    }
+    const votes = await db.getVotesForStories(storyIds);
     res.json(votes);
   } catch (error) {
-    console.error('Error getting story votes:', error);
+    console.error('Error getting bulk votes:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -16,6 +16,16 @@ export async function createSession(name: string): Promise<{ id: string; name: s
 }
 
 /**
+ * Get an existing session by ID
+ */
+export async function getSession(sessionId: string): Promise<{ id: string; name: string } | null> {
+  const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Failed to get session');
+  return response.json();
+}
+
+/**
  * Save stories for a session (only ticket IDs, not descriptions)
  * Saves all stories in a single request (backend handles batching if needed)
  */
@@ -84,7 +94,8 @@ export async function saveVote(
 }
 
 /**
- * Get all votes for a session
+ * Get all votes for a session (backward compatibility)
+ * Now fetches votes for all stories in the session
  */
 export async function getVotes(sessionId: string): Promise<Vote[]> {
   const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/votes`);
@@ -93,10 +104,24 @@ export async function getVotes(sessionId: string): Promise<Vote[]> {
 }
 
 /**
- * Get votes for a specific story
+ * Get votes for multiple stories (more efficient)
  */
-export async function getStoryVotes(sessionId: string, storyId: string): Promise<Vote[]> {
-  const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/stories/${storyId}/votes`);
+export async function getVotesForStories(storyIds: string[]): Promise<Vote[]> {
+  if (!storyIds || storyIds.length === 0) return [];
+  const response = await fetch(`${API_BASE_URL}/api/votes/bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ storyIds }),
+  });
+  if (!response.ok) throw new Error('Failed to get votes');
+  return response.json();
+}
+
+/**
+ * Get votes for a specific story (global, not per session)
+ */
+export async function getStoryVotes(storyId: string): Promise<Vote[]> {
+  const response = await fetch(`${API_BASE_URL}/api/stories/${storyId}/votes`);
   if (!response.ok) throw new Error('Failed to get story votes');
   return response.json();
 }

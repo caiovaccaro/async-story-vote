@@ -153,20 +153,26 @@ Stores team member display names only - no PII.
 - Any other PII
 
 #### `votes`
-Stores voting data and unclear flags.
+Stores voting data and unclear flags. **Votes are global per user per story (not per session)**.
 
 **Columns:**
 - `id` (UUID, PRIMARY KEY): Auto-generated UUID
-- `session_id` (UUID, FOREIGN KEY): References `sessions(id)`
-- `story_id` (TEXT): References `stories(id)`
+- `session_id` (UUID, FOREIGN KEY, NULLABLE): References `sessions(id)` - optional, used for tracking
+- `story_id` (TEXT): JIRA issue ID (e.g., "10001")
 - `member_id` (UUID, FOREIGN KEY): References `members(id)`
 - `points` (TEXT): Story point estimate (e.g., "3", "5", "?")
 - `is_unclear` (BOOLEAN): Whether the member flagged this story as unclear
 - `created_at` (TIMESTAMP): When the vote was cast
 - `updated_at` (TIMESTAMP): Last update time (auto-updated)
-- **Unique Constraint**: `(session_id, story_id, member_id)` - one vote per member per story
+- **Unique Constraint**: `(story_id, member_id)` - **one vote per member per story globally**
 
-**Note**: Votes can be updated (e.g., changing from "3" to "5" or toggling unclear flag).
+**Important Notes**:
+- Votes are **global** - not tied to a specific session
+- Each user has **one vote per story** across all sessions
+- Votes **persist forever** - they're not deleted when sessions end
+- All users can see all votes for any story
+- Votes can be updated (e.g., changing from "3" to "5" or toggling unclear flag)
+- `session_id` is optional and used for tracking/organization only
 
 #### `session_state`
 Stores UI state for persistence across page refreshes.
@@ -181,7 +187,8 @@ Stores UI state for persistence across page refreshes.
 
 The schema includes indexes for performance:
 - `idx_stories_session_id`: On `stories(session_id)` for fast story lookups
-- `idx_votes_session_story`: On `votes(session_id, story_id)` for vote aggregation
+- `idx_votes_story_id_member_id`: On `votes(story_id, member_id)` for global vote lookups
+- `idx_votes_session_story`: On `votes(session_id, story_id)` for session-based vote queries (backward compatibility)
 - `idx_votes_member`: On `votes(member_id)` for member vote lookups
 - `idx_members_session`: On `members(session_id, name)` for member lookups
 
@@ -201,10 +208,16 @@ Auto-updating `updated_at` timestamps:
 ✅ **Safe to Store:**
 - Ticket IDs (public information)
 - Display names (non-sensitive)
-- Story point votes (aggregated data)
-- Unclear flags (boolean)
-- Session metadata (non-sensitive)
-- UI state (current position, revealed status)
+- Story point votes (global per user per story)
+- Unclear flags (boolean, global per user per story)
+- Session metadata (non-sensitive, for UI state tracking)
+- UI state (current position, revealed status, per session)
+
+**Vote Model**:
+- Votes are **global** - stored per `(story_id, member_id)` combination
+- Each user has **one vote per story** across all sessions
+- Votes **persist forever** - not deleted when sessions end
+- All users can see all votes for any story
 
 ### What is NOT Stored
 

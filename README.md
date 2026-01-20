@@ -152,16 +152,22 @@ This application uses NeonDB (PostgreSQL) to persist voting data and session sta
    npm run db:init
    ```
 
+6. **Run database migration** (if upgrading from an older version):
+   ```bash
+   npm run db:migrate
+   ```
+   This migrates votes to be global per user per story (not per session).
+
 For more details, see [database/README.md](./database/README.md).
 
 ### What's Stored
 
 The database stores:
-- **Sessions**: Refinement session metadata
+- **Sessions**: Refinement session metadata (for UI state tracking)
 - **Stories**: Only ticket IDs (JIRA issue ID and ticket key) - no descriptions or titles
 - **Members**: Display names only (no PII)
-- **Votes**: Story point estimates and unclear flags
-- **Session State**: Current story index and revealed status
+- **Votes**: Story point estimates and unclear flags (global per user per story, not per session)
+- **Session State**: Current story index and revealed status (per user session)
 
 **Important**: The database does NOT store:
 - Task descriptions
@@ -172,12 +178,22 @@ The database stores:
 
 All story details are fetched from JIRA in real-time when needed.
 
+### Vote Persistence Model
+
+Votes are stored globally per user per story:
+- **One vote per user per story**: Each team member has one vote per JIRA story, regardless of session
+- **Persistent across sessions**: Votes persist forever - they're not tied to a specific refinement session
+- **Visible to all users**: All team members can see all votes for any story
+- **Updatable**: Users can change their vote at any time - it updates their existing vote
+- **Session-independent**: Votes are global, but session state (current position, revealed status) is per session
+
 ### Database Features
 
-- **Persistent Voting**: Votes are saved to the database and persist across page refreshes
-- **Unclear Flags**: Team members can flag tasks as unclear (stored per member per story)
-- **Session State**: Current position and revealed status are preserved
-- **Multi-session Support**: Each refinement session has its own data
+- **Global Persistent Voting**: Votes are saved globally per user per story and persist forever across all sessions
+- **Cross-User Visibility**: All team members can see each other's votes in real-time
+- **Vote Updates**: Users can change their vote at any time - it updates their existing vote for that story
+- **Unclear Flags**: Team members can flag tasks as unclear (stored per member per story, globally)
+- **Session State**: Current position and revealed status are preserved per user session
 - **Batch Operations**: Stories are saved in batches of 50 for performance
 
 ## Usage
@@ -189,9 +205,14 @@ All story details are fetched from JIRA in real-time when needed.
    - Use "Voting" mode to focus on one story at a time
    - Use "All Stories" mode to see all stories in a list
 3. **Vote**: Click on a story point value (0, 1, 2, 3, 5, 8, 13, 21, or ?)
+   - Your vote is saved immediately and visible to all team members
+   - You can change your vote at any time - it will update your existing vote
 4. **Flag as Unclear**: Click "Flag as Unclear" if the story needs clarification
+   - The unclear flag is visible to all team members
 5. **Navigate**: Use Previous/Next buttons or click on stories in the list view
-6. **Reveal Votes**: Once all members have voted, reveal the votes to see the consensus
+6. **View All Votes**: See votes from all team members in real-time
+   - Votes are global - you'll see votes from all users, even if they voted in a different session
+7. **Reveal Votes**: Once all members have voted, reveal the votes to see the consensus
 
 ### View Modes
 
@@ -204,18 +225,20 @@ All story details are fetched from JIRA in real-time when needed.
 
 #### List View
 - Shows all stories in a paginated list
-- Displays current average vote (even if not all members have voted)
-- Shows unclear flag count with icon
+- Displays current average vote from all users (even if not all members have voted)
+- Shows unclear flag count with icon (counts all users who flagged it)
 - Displays issue type and creation date
 - Clickable ticket IDs (opens JIRA in new tab)
+- Shows votes from all team members globally
 - Pagination controls at the bottom
 - Auto-scrolls to current story when switching from voting view
 
 ### Unclear Flags
 
 - Each team member can flag a story as unclear
-- The flag count is displayed prominently in the list view
-- Flags are stored per member per story
+- The flag count is displayed prominently in the list view (shows count from all users)
+- Flags are stored globally per member per story (not per session)
+- All users can see which stories have been flagged as unclear
 - Useful for identifying stories that need clarification before voting
 
 ## Available Scripts
@@ -228,6 +251,7 @@ npm run dev:all          # Start both frontend and backend (recommended)
 
 # Database
 npm run db:init          # Initialize database schema
+npm run db:migrate       # Run database migration (for upgrading from older versions)
 
 # Build
 npm run build            # Build for production
