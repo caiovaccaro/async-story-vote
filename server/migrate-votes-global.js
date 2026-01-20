@@ -27,35 +27,79 @@ async function runMigration() {
     
     await client.query('BEGIN');
     
-    // Step 1: Drop the old unique constraint
+    // Step 1: Drop the old unique constraint if it exists
     console.log('Step 1: Dropping old unique constraint...');
-    await client.query(`
-      ALTER TABLE votes DROP CONSTRAINT IF EXISTS votes_session_id_story_id_member_id_key;
+    const oldConstraintExists = await client.query(`
+      SELECT 1 FROM pg_constraint 
+      WHERE conname = 'votes_session_id_story_id_member_id_key' 
+      AND conrelid = 'votes'::regclass;
     `);
     
-    // Step 2: Make session_id nullable
+    if (oldConstraintExists.rows.length > 0) {
+      await client.query(`
+        ALTER TABLE votes DROP CONSTRAINT votes_session_id_story_id_member_id_key;
+      `);
+      console.log('  ✅ Old constraint dropped');
+    } else {
+      console.log('  ℹ️  Old constraint does not exist, skipping');
+    }
+    
+    // Step 2: Make session_id nullable (check if it's already nullable)
     console.log('Step 2: Making session_id nullable...');
-    await client.query(`
-      ALTER TABLE votes ALTER COLUMN session_id DROP NOT NULL;
+    const columnInfo = await client.query(`
+      SELECT is_nullable FROM information_schema.columns 
+      WHERE table_name = 'votes' AND column_name = 'session_id';
     `);
     
-    // Step 3: Add new unique constraint on (story_id, member_id)
+    if (columnInfo.rows.length > 0 && columnInfo.rows[0].is_nullable === 'NO') {
+      await client.query(`
+        ALTER TABLE votes ALTER COLUMN session_id DROP NOT NULL;
+      `);
+      console.log('  ✅ session_id is now nullable');
+    } else {
+      console.log('  ℹ️  session_id is already nullable, skipping');
+    }
+    
+    // Step 3: Add new unique constraint on (story_id, member_id) if it doesn't exist
     console.log('Step 3: Adding new unique constraint on (story_id, member_id)...');
-    await client.query(`
-      ALTER TABLE votes ADD CONSTRAINT votes_story_id_member_id_key UNIQUE (story_id, member_id);
+    const constraintExists = await client.query(`
+      SELECT 1 FROM pg_constraint 
+      WHERE conname = 'votes_story_id_member_id_key' 
+      AND conrelid = 'votes'::regclass;
     `);
     
-    // Step 4: Drop the foreign key constraint (it will be recreated if needed)
+    if (constraintExists.rows.length === 0) {
+      await client.query(`
+        ALTER TABLE votes ADD CONSTRAINT votes_story_id_member_id_key UNIQUE (story_id, member_id);
+      `);
+      console.log('  ✅ Constraint added');
+    } else {
+      console.log('  ℹ️  Constraint already exists, skipping');
+    }
+    
+    // Step 4: Drop the old foreign key constraint if it exists
     console.log('Step 4: Dropping old foreign key constraint...');
-    await client.query(`
-      ALTER TABLE votes DROP CONSTRAINT IF EXISTS votes_story_id_session_id_fkey;
+    const fkExists = await client.query(`
+      SELECT 1 FROM pg_constraint 
+      WHERE conname = 'votes_story_id_session_id_fkey' 
+      AND conrelid = 'votes'::regclass;
     `);
     
-    // Step 5: Add index for faster lookups
+    if (fkExists.rows.length > 0) {
+      await client.query(`
+        ALTER TABLE votes DROP CONSTRAINT votes_story_id_session_id_fkey;
+      `);
+      console.log('  ✅ Foreign key constraint dropped');
+    } else {
+      console.log('  ℹ️  Foreign key constraint does not exist, skipping');
+    }
+    
+    // Step 5: Add index for faster lookups (idempotent)
     console.log('Step 5: Adding index for faster lookups...');
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_votes_story_id_member_id ON votes(story_id, member_id);
     `);
+    console.log('  ✅ Index created or already exists');
     
     await client.query('COMMIT');
     console.log('✅ Migration completed successfully!');

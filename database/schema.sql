@@ -30,18 +30,18 @@ CREATE TABLE IF NOT EXISTS members (
 );
 
 -- Votes table - stores voting data
+-- Votes are global per story_id and member_id (not per session)
 CREATE TABLE IF NOT EXISTS votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
-    story_id VARCHAR(255) NOT NULL, -- JIRA issue ID (references stories.id, but can't use FK due to composite key)
+    session_id UUID REFERENCES sessions(id) ON DELETE CASCADE, -- Optional, for tracking/organization
+    story_id VARCHAR(255) NOT NULL, -- JIRA issue ID
     member_id UUID REFERENCES members(id) ON DELETE CASCADE,
     points VARCHAR(10) NOT NULL, -- Story points: '1', '2', '3', '5', '8', '13', '21', '?'
     is_unclear BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(session_id, story_id, member_id),
-    -- Foreign key constraint using both story_id and session_id to match stories composite key
-    FOREIGN KEY (story_id, session_id) REFERENCES stories(id, session_id) ON DELETE CASCADE
+    -- Unique constraint: one vote per member per story globally (not per session)
+    UNIQUE(story_id, member_id)
 );
 
 -- Session state table - stores UI state (current story index, revealed status)

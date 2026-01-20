@@ -169,7 +169,7 @@ export async function getMembers(sessionId) {
 
 /**
  * Save or update a vote
- * Votes are now global per story_id and member_id (not per session)
+ * Votes are global per story_id and member_id (not per session)
  * session_id is optional and used for tracking/organization only
  */
 export async function saveVote(sessionId, storyId, memberId, points, isUnclear = false) {

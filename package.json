@@ -9,6 +9,7 @@
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "db:init": "node server/init-db.js",
     "db:migrate": "node server/migrate-votes-global.js",
+    "db:check": "node server/check-constraints.js",
     "db:wipe-votes": "node server/wipe-votes.js",
     "build": "vite build",
     "build:dev": "vite build --mode development",
