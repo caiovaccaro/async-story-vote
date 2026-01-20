@@ -1,14 +1,25 @@
 import { VoteCard } from "./VoteCard";
+import { Button } from "./ui/button";
 import { STORY_POINTS, StoryPoint } from "@/types/refinement";
+import { AlertTriangle } from "lucide-react";
 
 interface VotingPanelProps {
   selectedPoints: StoryPoint | null;
   onVote: (points: StoryPoint) => void;
   hasVoted: boolean;
   isRevealed: boolean;
+  isUnclear: boolean;
+  onToggleUnclear: () => void;
 }
 
-export function VotingPanel({ selectedPoints, onVote, hasVoted, isRevealed }: VotingPanelProps) {
+export function VotingPanel({ 
+  selectedPoints, 
+  onVote, 
+  hasVoted, 
+  isRevealed,
+  isUnclear,
+  onToggleUnclear 
+}: VotingPanelProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -28,6 +39,19 @@ export function VotingPanel({ selectedPoints, onVote, hasVoted, isRevealed }: Vo
             disabled={isRevealed}
           />
         ))}
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <Button
+          variant={isUnclear ? "destructive" : "outline"}
+          size="sm"
+          onClick={onToggleUnclear}
+          disabled={isRevealed}
+          className="gap-2"
+        >
+          <AlertTriangle className="h-4 w-4" />
+          {isUnclear ? "Marked as Unclear" : "Flag as Unclear"}
+        </Button>
       </div>
     </div>
   );

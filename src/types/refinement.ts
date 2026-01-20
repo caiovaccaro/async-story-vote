@@ -2,14 +2,18 @@ export interface Story {
   id: string;
   title: string;
   description: string;
+  descriptionHtml?: string; // HTML version for proper rendering
   acceptanceCriteria?: string[];
   ticketId: string;
+  issueType?: string; // Task type (e.g., Story, Bug, Task)
+  createdDate?: string; // ISO date string
 }
 
 export interface Vote {
   memberId: string;
   storyId: string;
   points: StoryPoint;
+  isUnclear?: boolean;
 }
 
 export interface TeamMember {

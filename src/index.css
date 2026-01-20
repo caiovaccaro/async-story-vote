@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
 
 @layer base {
   :root {
@@ -156,5 +156,79 @@
 
   .animate-fade-in-up {
     animation: fadeInUp 0.4s ease-out forwards;
+  }
+
+  /* JIRA description HTML styling */
+  .jira-description {
+    @apply text-muted-foreground;
+  }
+
+  .jira-description h1,
+  .jira-description h2,
+  .jira-description h3,
+  .jira-description h4 {
+    @apply font-semibold text-foreground mt-4 mb-2;
+  }
+
+  .jira-description h1 {
+    @apply text-xl;
+  }
+
+  .jira-description h2 {
+    @apply text-lg;
+  }
+
+  .jira-description h3 {
+    @apply text-base;
+  }
+
+  .jira-description p {
+    @apply mb-3 leading-relaxed;
+  }
+
+  .jira-description ul,
+  .jira-description ol {
+    @apply list-disc list-inside mb-3 space-y-1 ml-4;
+  }
+
+  .jira-description li {
+    @apply mb-1;
+  }
+
+  .jira-description strong {
+    @apply font-semibold text-foreground;
+  }
+
+  .jira-description em {
+    @apply italic;
+  }
+
+  .jira-description code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+
+  .jira-description pre {
+    @apply bg-muted p-3 rounded-lg overflow-x-auto mb-3;
+  }
+
+  .jira-description pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .jira-description a {
+    @apply text-primary hover:underline;
+  }
+
+  .jira-description table {
+    @apply w-full border-collapse mb-3;
+  }
+
+  .jira-description th,
+  .jira-description td {
+    @apply border border-border px-3 py-2 text-left;
+  }
+
+  .jira-description th {
+    @apply bg-muted font-semibold;
   }
 }
