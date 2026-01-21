@@ -11,6 +11,7 @@ export interface Story {
 
 export interface Vote {
   memberId: string;
+  memberName?: string; // Optional member name for matching when memberId doesn't match
   storyId: string;
   points: StoryPoint;
   isUnclear?: boolean;

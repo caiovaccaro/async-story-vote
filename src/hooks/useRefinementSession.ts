@@ -320,9 +320,35 @@ export function useRefinementSession() {
   const dbMemberForVote = currentMember ? session.members.find(m => m.name === currentMember.name) : null;
   const memberIdForVote = dbMemberForVote?.id || currentMember?.id;
   
-  const currentVote = session.votes.find(
-    (v) => v.memberId === memberIdForVote && v.storyId === currentStory?.id
-  );
+  // Find current vote by memberId first, then fallback to memberName matching
+  // This handles cases where votes are global but members are per-session
+  const currentVote = session.votes.find((v) => {
+    if (v.storyId !== currentStory?.id) return false;
+    
+    // Direct ID match (preferred)
+    if (v.memberId === memberIdForVote) return true;
+    
+    // Fallback: match by name if memberId doesn't match
+    if (v.memberName && currentMember?.name) {
+      const voteName = v.memberName.trim().toLowerCase();
+      const memberName = currentMember.name.trim().toLowerCase();
+      if (voteName === memberName) return true;
+    }
+    
+    return false;
+  });
+  
+  // Debug logging
+  if (process.env.NODE_ENV === 'development' && currentStory) {
+    console.log('Current vote lookup:', {
+      currentMember: currentMember?.name,
+      memberIdForVote,
+      currentStoryId: currentStory.id,
+      totalVotes: session.votes.length,
+      storyVotes: session.votes.filter(v => v.storyId === currentStory.id),
+      currentVote,
+    });
+  }
 
   const storyVotes = session.votes.filter((v) => v.storyId === currentStory?.id);
   const allVoted = storyVotes.length === session.members.length;

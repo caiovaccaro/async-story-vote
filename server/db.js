@@ -187,24 +187,30 @@ export async function saveVote(sessionId, storyId, memberId, points, isUnclear =
 /**
  * Get all votes for specific story IDs
  * Votes are now global, so we fetch by story_id (not session_id)
+ * Also includes member names for matching
  */
 export async function getVotesForStories(storyIds) {
   if (!storyIds || storyIds.length === 0) {
     return [];
   }
   const result = await pool.query(
-    `SELECT story_id, member_id, points, is_unclear
-     FROM votes
-     WHERE story_id = ANY($1::text[])`,
+    `SELECT v.story_id, v.member_id, v.points, v.is_unclear, m.name as member_name
+     FROM votes v
+     LEFT JOIN members m ON v.member_id = m.id
+     WHERE v.story_id = ANY($1::text[])
+     ORDER BY v.created_at DESC`,
     [storyIds]
   );
   console.log(`Retrieved ${result.rows.length} votes from database for ${storyIds.length} stories`);
+  console.log(`Votes with member names: ${result.rows.filter(r => r.member_name).length}, without: ${result.rows.filter(r => !r.member_name).length}`);
+  
   return result.rows.map(row => {
     // Keep points as string to match frontend expectations (can be '?', '1', '2', etc.)
     const points = row.points === '?' ? '?' : String(row.points);
     return {
       storyId: row.story_id,
       memberId: row.member_id,
+      memberName: row.member_name || null, // Include member name for matching (null if not found)
       points: points,
       isUnclear: row.is_unclear || false,
     };

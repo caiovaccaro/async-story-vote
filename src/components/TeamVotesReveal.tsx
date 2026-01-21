@@ -26,6 +26,26 @@ const getVoteColor = (points: StoryPoint) => {
 export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVotesRevealProps) {
   const storyVotes = votes.filter(v => v.storyId === storyId);
   
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('TeamVotesReveal:', {
+      storyId,
+      totalVotes: votes.length,
+      storyVotes: storyVotes.length,
+      members: members.length,
+      storyVotesData: storyVotes.map(v => ({ 
+        memberId: v.memberId, 
+        memberName: v.memberName, 
+        storyId: v.storyId, 
+        points: v.points 
+      })),
+      membersData: members.map(m => ({ id: m.id, name: m.name })),
+      // Check if any votes have memberName
+      votesWithMemberName: storyVotes.filter(v => v.memberName).length,
+      votesWithoutMemberName: storyVotes.filter(v => !v.memberName).length,
+    });
+  }
+  
   // Convert votes to numbers, handling both number and string types
   // Filter out '?' and invalid values
   const numericVotes = storyVotes
@@ -65,8 +85,49 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {members.map((member, index) => {
-          const vote = storyVotes.find(v => v.memberId === member.id);
+          // Find vote by matching memberId first, then fallback to memberName
+          // This handles cases where votes are global but members are per-session
+          const vote = storyVotes.find(v => {
+            // Direct ID match (preferred)
+            if (v.memberId === member.id) {
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`✅ Vote matched by ID for ${member.name}:`, { vote: v, member });
+              }
+              return true;
+            }
+            // Fallback: match by name if memberId doesn't match
+            // This is needed because votes are global but members are per-session
+            // Use case-insensitive matching and trim whitespace
+            if (v.memberName && member.name) {
+              const voteName = v.memberName.trim().toLowerCase();
+              const memberName = member.name.trim().toLowerCase();
+              if (voteName === memberName) {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`✅ Vote matched by name for ${member.name}:`, { 
+                    voteMemberId: v.memberId, 
+                    voteMemberName: v.memberName,
+                    memberId: member.id,
+                    memberName: member.name,
+                    vote: v 
+                  });
+                }
+                return true;
+              }
+            }
+            return false;
+          });
           const hasVoted = !!vote;
+          
+          // Debug logging for unmatched votes
+          if (process.env.NODE_ENV === 'development' && !vote && storyVotes.length > 0) {
+            console.log(`❌ No vote found for member ${member.name} (ID: ${member.id}):`, {
+              availableVotes: storyVotes.map(v => ({ 
+                memberId: v.memberId, 
+                memberName: v.memberName,
+                storyId: v.storyId 
+              })),
+            });
+          }
 
           return (
             <div
@@ -89,7 +150,7 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
               </span>
               
               {isRevealed ? (
-                hasVoted ? (
+                hasVoted && vote ? (
                   <div className={cn(
                     "w-12 h-12 rounded-lg flex items-center justify-center text-white font-mono font-bold text-xl",
                     getVoteColor(vote.points)
