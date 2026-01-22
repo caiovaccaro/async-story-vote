@@ -37,8 +37,10 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
         memberId: v.memberId, 
         memberName: v.memberName, 
         storyId: v.storyId, 
-        points: v.points 
+        points: v.points,
+        isUnclear: v.isUnclear,
       })),
+      unclearCount: storyVotes.filter(v => v.isUnclear).length,
       membersData: members.map(m => ({ id: m.id, name: m.name })),
       // Check if any votes have memberName
       votesWithMemberName: storyVotes.filter(v => v.memberName).length,
@@ -48,6 +50,8 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
   
   // Convert votes to numbers, handling both number and string types
   // Filter out '?' and invalid values
+  // Note: Unclear flags (isUnclear) don't affect the average calculation
+  // The average is calculated from numeric votes only, regardless of unclear flags
   const numericVotes = storyVotes
     .map(v => {
       const points = v.points;
@@ -58,6 +62,8 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
     })
     .filter((p): p is number => p !== null);
   
+  // Calculate average from numeric votes only
+  // This is independent of unclear flags - unclear flags don't affect the average
   const average = numericVotes.length > 0 
     ? Math.round(numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length * 10) / 10
     : null;
@@ -75,7 +81,8 @@ export function TeamVotesReveal({ votes, members, isRevealed, storyId }: TeamVot
         </span>
       </div>
 
-      {/* Show current average above the grid, even if not all voted */}
+      {/* Show current average above the grid, even if not all voted or if there are unclear flags */}
+      {/* The average is calculated from numeric votes only and is independent of unclear flags */}
       {average !== null && (
         <div className="story-card rounded-xl p-4 flex items-center justify-center">
           <span className="text-sm text-muted-foreground mr-2">Current average:</span>

@@ -35,6 +35,8 @@ function calculateVoteStats(storyId: string, votes: Vote[], memberCount: number)
   
   // Convert votes to numbers, handling both number and string types
   // Filter out '?' and invalid values
+  // Note: Unclear flags (isUnclear) don't affect the average calculation
+  // The average is calculated from numeric votes only, regardless of unclear flags
   const numericVotes = storyVotes
     .map((v) => {
       const points = v.points;
@@ -47,14 +49,62 @@ function calculateVoteStats(storyId: string, votes: Vote[], memberCount: number)
 
   const voteCount = storyVotes.length;
   const allVoted = voteCount === memberCount;
-  const unclearCount = storyVotes.filter((v) => v.isUnclear).length;
+  // Count unclear flags - explicitly check for true (handles boolean, string "true", etc.)
+  const unclearCount = storyVotes.filter((v) => {
+    // Handle boolean true, string "true", or truthy values
+    return v.isUnclear === true || v.isUnclear === "true" || Boolean(v.isUnclear);
+  }).length;
+  
+  // Debug logging for unclear flags
+  if (process.env.NODE_ENV === 'development' && voteCount > 0) {
+    const unclearVotes = storyVotes.filter((v) => {
+      return v.isUnclear === true || v.isUnclear === "true" || Boolean(v.isUnclear);
+    });
+    console.log(`🔍 Story ${storyId} unclear flag analysis:`, {
+      voteCount,
+      unclearCount,
+      unclearVotesCount: unclearVotes.length,
+      allVotes: storyVotes.map(v => ({ 
+        points: v.points, 
+        isUnclear: v.isUnclear,
+        isUnclearType: typeof v.isUnclear,
+        isUnclearTruthy: Boolean(v.isUnclear),
+        memberId: v.memberId,
+        memberName: v.memberName,
+      })),
+      unclearVotes: unclearVotes.map(v => ({
+        points: v.points,
+        isUnclear: v.isUnclear,
+        memberName: v.memberName,
+      })),
+    });
+  }
 
   // Always calculate average if there are any numeric votes, even if not all voted
+  // This is independent of unclear flags - unclear flags don't affect the average
   const average = numericVotes.length > 0 
     ? numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length 
     : null;
   const allSame = numericVotes.length > 0 && numericVotes.every((v) => v === numericVotes[0]);
   const consensus: number | null = allSame ? numericVotes[0] : null;
+
+  // Debug logging to understand why average might not show
+  if (process.env.NODE_ENV === 'development' && voteCount > 0) {
+    if (average === null) {
+      console.log(`⚠️ Story ${storyId} has ${voteCount} votes but no average:`, {
+        storyVotes: storyVotes.map(v => ({ 
+          points: v.points, 
+          isUnclear: v.isUnclear,
+          memberId: v.memberId,
+          memberName: v.memberName,
+        })),
+        numericVotesCount: numericVotes.length,
+        numericVotes: numericVotes,
+      });
+    } else {
+      console.log(`✅ Story ${storyId} has ${voteCount} votes, ${numericVotes.length} numeric, average: ${average.toFixed(1)}`);
+    }
+  }
 
   return { average, consensus, voteCount, allVoted, unclearCount };
 }
